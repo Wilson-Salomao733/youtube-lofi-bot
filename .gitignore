@@ -1,0 +1,53 @@
+# Vídeos gerados
+*.mp4
+*.avi
+*.mov
+
+# Imagens temporárias
+lofi_temp_image.png
+lofi_image.png
+
+# Áudios temporários
+*.wav
+lofi_temp_audio.wav
+
+# Cache Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Ambientes virtuais
+venv/
+env/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Credenciais e tokens (NUNCA commitar!)
+credentials/
+*.json
+*.pickle
+token.pickle
+credentials.json
+stream_config.json
+
+# Logs
+logs/
+*.log
+
+# Docker
+docker-compose.override.yml
+
+# Frames temporários
+lofi_temp_frames/
+

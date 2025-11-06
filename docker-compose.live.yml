@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  live-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.live
+    container_name: lofi-live-bot
+    restart: unless-stopped
+    volumes:
+      - ./credentials:/app/credentials
+      - ./images:/app/images
+      - ./audios:/app/audios
+      - ./output:/app/output
+      - ./logs:/app/logs
+    environment:
+      - TZ=America/Sao_Paulo
+      - EXECUTE_NOW=true
+    networks:
+      - lofi-network
+
+networks:
+  lofi-network:
+    driver: bridge
+

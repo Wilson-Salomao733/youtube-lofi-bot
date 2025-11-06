@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  lofi-generator:
+    build: .
+    container_name: lofi-bot
+    volumes:
+      - ./output:/app/output
+      - ./credentials:/app/credentials
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/youtube-credentials.json
+      - OUTPUT_DIR=/app/output
+    command: python3 create_lofi_video.py --duration 3600
+    restart: unless-stopped
+
