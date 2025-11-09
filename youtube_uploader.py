@@ -322,39 +322,44 @@ class YouTubeUploader:
             print("❌ Não autenticado no YouTube")
             return None, None
         
-        # Se não especificado, cria para começar imediatamente (sem agendamento)
-        scheduled_start_time_str = None
-        if scheduled_start_time:
-            # YouTube requer formato ISO 8601 em UTC com Z
-            # Deve ser entre 10 minutos e 7 dias no futuro
-            from datetime import timezone
-            if scheduled_start_time.tzinfo is None:
-                scheduled_start_time = scheduled_start_time.replace(tzinfo=timezone.utc)
-            else:
-                scheduled_start_time = scheduled_start_time.astimezone(timezone.utc)
-            scheduled_start_time_str = scheduled_start_time.isoformat().replace('+00:00', 'Z')
+        # YouTube API REQUER scheduledStartTime (mínimo 10 minutos no futuro)
+        # Se não especificado, usa o mínimo necessário (10 minutos no futuro)
+        from datetime import timezone, timedelta
+        
+        if scheduled_start_time is None:
+            # Usa o mínimo necessário: 10 minutos no futuro
+            now_utc = datetime.now(timezone.utc)
+            scheduled_start_time = now_utc + timedelta(minutes=10)
+            print("⏰ Live será criada com início mínimo (10 minutos) - pode ser iniciada imediatamente via streaming")
+        else:
+            scheduled_start_time = scheduled_start_time
+        
+        # YouTube requer formato ISO 8601 em UTC com Z
+        # Deve ser entre 10 minutos e 7 dias no futuro
+        if scheduled_start_time.tzinfo is None:
+            scheduled_start_time = scheduled_start_time.replace(tzinfo=timezone.utc)
+        else:
+            scheduled_start_time = scheduled_start_time.astimezone(timezone.utc)
+        
+        scheduled_start_time_str = scheduled_start_time.isoformat().replace('+00:00', 'Z')
         
         print(f"🎬 Criando live: {title}")
+        print(f"⏰ Agendado para: {scheduled_start_time_str}")
+        print("💡 Live pode ser iniciada imediatamente quando você começar a transmitir")
         
         try:
             # Cria o broadcast
             broadcast_body = {
                 'snippet': {
                     'title': title,
-                    'description': description
+                    'description': description,
+                    'scheduledStartTime': scheduled_start_time_str  # YouTube requer isso
                 },
                 'status': {
                     'privacyStatus': privacy_status,
                     'selfDeclaredMadeForKids': False
                 }
             }
-            
-            # Adiciona scheduledStartTime apenas se fornecido
-            if scheduled_start_time_str:
-                broadcast_body['snippet']['scheduledStartTime'] = scheduled_start_time_str
-                print(f"⏰ Agendado para: {scheduled_start_time_str}")
-            else:
-                print("⏰ Live SEM agendamento - será iniciada imediatamente quando você começar a transmitir")
             
             broadcast_response = self.youtube.liveBroadcasts().insert(
                 part='snippet,contentDetails,status',
