@@ -47,6 +47,7 @@ class NightBot:
         self.live_manager.logger = logger
         self.current_video_path = None
         self.workflow_running = False
+        self.workflow_lock = threading.Lock()  # Lock thread-safe
         self.setup_signal_handlers()
     
     def setup_signal_handlers(self):
@@ -175,16 +176,15 @@ Tags: #sonsdanatureza #chuva #relaxar #dormir #meditação #natureza #sleep #rel
     
     def nightly_workflow(self):
         """Fluxo noturno completo: criar vídeo e iniciar live"""
-        if self.workflow_running:
+        # Usa lock para evitar execuções simultâneas
+        if not self.workflow_lock.acquire(blocking=False):
             logger.warning("⚠️  Workflow já em execução, ignorando...")
             return
         
-        self.workflow_running = True
-        
-        # Log de início com timestamp
-        logger.info(f"🕐 Iniciando workflow às {datetime.now().strftime('%H:%M:%S')}")
-        
-        try:
+            self.workflow_running = True
+            
+            # Log de início com timestamp
+            logger.info(f"🕐 Iniciando workflow às {datetime.now().strftime('%H:%M:%S')}")
             logger.info("=" * 60)
             logger.info("🌙 Iniciando fluxo noturno - 20h da noite")
             logger.info("=" * 60)
@@ -250,6 +250,7 @@ Tags: #sonsdanatureza #chuva #relaxar #dormir #meditação #natureza #sleep #rel
             traceback.print_exc()
         finally:
             self.workflow_running = False
+            self.workflow_lock.release()  # Libera o lock
     
     def run(self, execute_now=False):
         """Inicia o bot e agenda tarefas"""

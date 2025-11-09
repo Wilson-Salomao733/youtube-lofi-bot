@@ -8,6 +8,7 @@ import shutil
 import glob
 import random
 import json
+import time
 from datetime import datetime
 from moviepy.editor import ImageSequenceClip, AudioFileClip, concatenate_audioclips
 from lofi_generator_ultra import LofiUltraGenerator
@@ -395,16 +396,34 @@ class VideoCreator:
         
         print(f"\n5️⃣  Salvando vídeo: {output_path}")
         print("   ⏳ Isso pode levar alguns minutos...")
-        video_clip.write_videofile(
-            output_path,
-            fps=fps,
-            codec='libx264',
-            audio_codec='aac',
-            bitrate='8000k',
-            preset='medium',
-            logger=None,
-            verbose=False
-        )
+        
+        # Tenta criar o vídeo com tratamento de erro melhorado
+        max_retries = 2
+        for attempt in range(max_retries):
+            try:
+                video_clip.write_videofile(
+                    output_path,
+                    fps=fps,
+                    codec='libx264',
+                    audio_codec='aac',
+                    bitrate='8000k',
+                    preset='medium',
+                    logger=None,
+                    verbose=False
+                )
+                break  # Sucesso, sai do loop
+            except (BrokenPipeError, OSError) as e:
+                if attempt < max_retries - 1:
+                    print(f"   ⚠️  Erro ao criar vídeo (tentativa {attempt + 1}/{max_retries}): {e}")
+                    print("   🔄 Tentando novamente em 5 segundos...")
+                    time.sleep(5)
+                    # Tenta limpar recursos antes de tentar novamente
+                    try:
+                        video_clip.close()
+                    except:
+                        pass
+                else:
+                    raise  # Re-lança o erro na última tentativa
         
         # Limpa recursos
         video_clip.close()
