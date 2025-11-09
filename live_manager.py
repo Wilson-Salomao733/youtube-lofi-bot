@@ -132,6 +132,17 @@ class LiveManager:
             self.logger.error(f"❌ Arquivo de vídeo não encontrado: {video_path}")
             return False
         
+        # Verifica conectividade de rede antes de tentar streaming
+        try:
+            import socket
+            rtmp_host = rtmp_url.replace('rtmp://', '').split('/')[0]
+            self.logger.info(f"🔍 Verificando conectividade com {rtmp_host}...")
+            socket.gethostbyname(rtmp_host)
+            self.logger.info("✅ DNS resolvido com sucesso")
+        except Exception as e:
+            self.logger.warning(f"⚠️  Aviso ao verificar DNS: {e}")
+            self.logger.info("💡 Continuando mesmo assim...")
+        
         # Tenta usar ffmpeg primeiro
         try:
             rtmp_full_url = f"{rtmp_url}/{stream_key}"
@@ -227,7 +238,14 @@ class LiveManager:
                 stderr_lower = stderr_output.lower()
                 error_found = False
                 
-                if 'connection refused' in stderr_lower or 'connection reset' in stderr_lower:
+                if 'failed to resolve hostname' in stderr_lower or 'no address associated with hostname' in stderr_lower:
+                    self.logger.error("❌ Erro de DNS - não foi possível resolver o hostname")
+                    self.logger.info("💡 Verificando DNS e tentando novamente em 10 segundos...")
+                    time.sleep(10)
+                    # Tenta novamente uma vez
+                    self.logger.info("🔄 Tentando novamente após erro de DNS...")
+                    return self.start_streaming(video_path, stream_key, rtmp_url, use_automation_fallback)
+                elif 'connection refused' in stderr_lower or 'connection reset' in stderr_lower:
                     self.logger.error("❌ Erro de conexão RTMP - servidor recusou conexão")
                     self.logger.info("💡 Verifique se a stream key e RTMP URL estão corretas")
                     error_found = True
@@ -236,9 +254,14 @@ class LiveManager:
                     error_found = True
                 elif 'network' in stderr_lower or 'unreachable' in stderr_lower:
                     self.logger.error("❌ Erro de rede - não foi possível conectar ao servidor RTMP")
-                    error_found = True
+                    self.logger.info("💡 Verificando conectividade e tentando novamente em 10 segundos...")
+                    time.sleep(10)
+                    # Tenta novamente uma vez
+                    self.logger.info("🔄 Tentando novamente após erro de rede...")
+                    return self.start_streaming(video_path, stream_key, rtmp_url, use_automation_fallback)
                 elif 'invalid' in stderr_lower or 'cannot' in stderr_lower:
                     self.logger.error("❌ Erro de formato ou parâmetros inválidos")
+                    self.logger.info("💡 Verifique o formato do vídeo ou os parâmetros do ffmpeg")
                     error_found = True
                 elif exit_code != 0:
                     self.logger.error(f"❌ ffmpeg terminou com código de erro: {exit_code}")

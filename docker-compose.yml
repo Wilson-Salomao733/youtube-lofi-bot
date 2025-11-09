@@ -18,6 +18,10 @@ services:
       - CHROMEDRIVER_PATH=/usr/bin/chromedriver
       - DOCKER_CONTAINER=true
       # EXECUTE_NOW não é mais necessário - bots detectam horário automaticamente
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    network_mode: bridge
     # Executa ambos os bots (manhã e noite)
     # Para executar apenas manhã: command: python3 morning_bot.py
     # Para executar apenas noite: command: python3 night_bot.py
