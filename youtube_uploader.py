@@ -531,7 +531,7 @@ class YouTubeUploader:
             
             return None, None, None, None
     
-    def transition_broadcast_to_live(self, broadcast_id, max_retries=5, retry_delay=10):
+    def transition_broadcast_to_live(self, broadcast_id, max_retries=10, retry_delay=30):
         """
         Transiciona o broadcast de 'ready' para 'live' (publica a live)
         Tenta múltiplas vezes até o stream estar ativo
@@ -612,7 +612,17 @@ class YouTubeUploader:
                 if stream_status:
                     print(f"📊 Status do stream: {stream_status}")
                 
-                # Só tenta transicionar se estiver em 'ready'
+                # Verifica se o stream está realmente ativo antes de tentar transicionar
+                if stream_status and stream_status != 'active':
+                    if attempt < max_retries:
+                        print(f"⏳ Stream ainda não está ativo (status: {stream_status}). Aguardando {retry_delay}s...")
+                        time.sleep(retry_delay)
+                        continue
+                    else:
+                        print(f"⚠️  Stream não está ativo após {max_retries} tentativas (status: {stream_status})")
+                        return False
+                
+                # Só tenta transicionar se estiver em 'ready' e stream estiver 'active'
                 if broadcast_status and broadcast_status not in ['ready', 'live']:
                     if attempt < max_retries:
                         print(f"⏳ Broadcast está em '{broadcast_status}'. Aguardando {retry_delay}s...")
@@ -622,7 +632,15 @@ class YouTubeUploader:
                         print(f"⚠️  Broadcast não está em estado 'ready' (está em '{broadcast_status}')")
                         return False
                 
+                # Se stream está ativo mas broadcast não está em 'ready', aguarda mais
+                if stream_status == 'active' and broadcast_status != 'ready' and broadcast_status != 'live':
+                    if attempt < max_retries:
+                        print(f"⏳ Stream ativo mas broadcast em '{broadcast_status}'. Aguardando {retry_delay}s...")
+                        time.sleep(retry_delay)
+                        continue
+                
                 print(f"🔄 Tentativa {attempt}/{max_retries}: Transicionando broadcast para 'live'...")
+                print(f"   📊 Broadcast: {broadcast_status}, Stream: {stream_status}")
                 
                 # Transição: 'testing' -> 'ready' -> 'live' -> 'complete'
                 # Vamos de 'ready' para 'live'

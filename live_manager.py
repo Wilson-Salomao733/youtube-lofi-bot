@@ -330,14 +330,14 @@ class LiveManager:
             traceback.print_exc()
             return False
     
-    def publish_live(self, broadcast_id=None, max_retries=5, retry_delay=20):
+    def publish_live(self, broadcast_id=None, max_retries=10, retry_delay=30):
         """
         Publica a live (transiciona para 'live')
         
         Args:
             broadcast_id: ID do broadcast (usa self.current_broadcast_id se None)
-            max_retries: Número máximo de tentativas
-            retry_delay: Segundos entre tentativas
+            max_retries: Número máximo de tentativas (aumentado para 10)
+            retry_delay: Segundos entre tentativas (aumentado para 30)
         
         Returns:
             True se sucesso, False caso contrário
@@ -348,19 +348,85 @@ class LiveManager:
             return False
         
         self.logger.info("⏳ Aguardando YouTube detectar stream e publicar automaticamente...")
-        self.logger.info("💡 Isso pode levar 2-3 minutos. O YouTube precisa detectar o stream ativo.")
+        self.logger.info("💡 Isso pode levar 3-5 minutos. O YouTube precisa detectar o stream ativo.")
         
         # Aguarda mais tempo para o YouTube detectar o stream
-        # O YouTube geralmente precisa de 2-3 minutos para detectar um stream RTMP ativo
-        time.sleep(120)  # Aguarda 2 minutos (120 segundos)
+        # O YouTube geralmente precisa de 3-5 minutos para detectar um stream RTMP ativo
+        self.logger.info("⏱️  Aguardando 3 minutos para o YouTube processar o stream...")
+        for i in range(6):  # 6 x 30 segundos = 3 minutos
+            time.sleep(30)
+            remaining = 6 - i - 1
+            if remaining > 0:
+                self.logger.info(f"⏳ Aguardando... {remaining * 30}s restantes")
         
         self.logger.info("🔄 Tentando publicar live...")
+        self.logger.info(f"🔄 Tentando até {max_retries} vezes com intervalo de {retry_delay}s...")
+        
         if self.uploader.transition_broadcast_to_live(broadcast_id, max_retries=max_retries, retry_delay=retry_delay):
             self.logger.info("✅ Live publicada automaticamente!")
             return True
         else:
-            self.logger.info("💡 YouTube pode publicar automaticamente quando detectar stream ativo")
-            self.logger.info(f"💡 Verifique: https://www.youtube.com/watch?v={broadcast_id}")
+            # Se a API falhar, tenta usar automação web como último recurso
+            self.logger.warning("⚠️  API não conseguiu publicar. Tentando automação web...")
+            if self._publish_live_with_automation(broadcast_id):
+                self.logger.info("✅ Live publicada via automação web!")
+                return True
+            else:
+                self.logger.info("💡 YouTube pode publicar automaticamente quando detectar stream ativo")
+                self.logger.info(f"💡 Verifique: https://www.youtube.com/watch?v={broadcast_id}")
+                return False
+    
+    def _publish_live_with_automation(self, broadcast_id):
+        """
+        Publica a live usando automação web (clica no botão "Transmitir ao vivo")
+        
+        Args:
+            broadcast_id: ID do broadcast
+        
+        Returns:
+            True se sucesso, False caso contrário
+        """
+        if not broadcast_id:
+            self.logger.error("❌ Broadcast ID não disponível para automação web")
+            return False
+        
+        self.logger.info("🤖 Usando automação web para publicar live...")
+        
+        try:
+            # No Docker, usa headless=True
+            import os
+            is_docker = os.getenv('DOCKER_CONTAINER', 'false').lower() == 'true'
+            headless_mode = is_docker or os.getenv('HEADLESS', 'false').lower() == 'true'
+            
+            automation = YouTubeAutomation(headless=headless_mode)
+            
+            # Faz login
+            if not automation.login_youtube():
+                self.logger.error("❌ Falha ao fazer login no YouTube")
+                automation.close()
+                return False
+            
+            # Navega para a página da live
+            if not automation.go_to_live_stream(broadcast_id):
+                self.logger.error("❌ Falha ao navegar para a página da live")
+                automation.close()
+                return False
+            
+            # Clica no botão "Transmitir ao vivo"
+            if automation.click_go_live_button():
+                self.logger.info("✅ Botão 'Transmitir ao vivo' clicado com sucesso!")
+                # Mantém referência para poder fechar depois
+                self.automation = automation
+                return True
+            else:
+                self.logger.error("❌ Falha ao clicar no botão 'Transmitir ao vivo'")
+                automation.close()
+                return False
+                
+        except Exception as e:
+            self.logger.error(f"❌ Erro na automação web: {e}")
+            import traceback
+            traceback.print_exc()
             return False
     
     def is_streaming_active(self):
