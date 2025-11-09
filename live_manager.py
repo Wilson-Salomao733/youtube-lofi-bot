@@ -151,25 +151,36 @@ class LiveManager:
             self.logger.info(f"🔑 Stream Key: {stream_key[:10]}...")
             
             # Comando ffmpeg otimizado para streaming RTMP
+            # Configurações baseadas nas recomendações oficiais do YouTube:
+            # - Codec: H.264 (libx264) para vídeo, AAC para áudio
+            # - Resolução: 1920x1080 (1080p) - detectada automaticamente do vídeo
+            # - Frame rate: 30fps - detectado automaticamente do vídeo
+            # - Bitrate vídeo: 4000k (recomendado: 3000-6000k para 1080p)
+            # - Bitrate áudio: 128k (recomendado: 128k)
+            # - Sample rate: 44100 Hz (recomendado: 44.1kHz ou 48kHz)
+            # - Formato: FLV (RTMP requer FLV)
             ffmpeg_cmd = [
                 'ffmpeg',
-                '-re',  # Lê na taxa de reprodução
-                '-stream_loop', '-1',  # Loop infinito
+                '-re',  # Lê na taxa de reprodução (tempo real)
+                '-stream_loop', '-1',  # Loop infinito do vídeo
                 '-i', video_path,
-                '-c:v', 'libx264',  # Codec de vídeo
-                '-preset', 'veryfast',  # Preset rápido
-                '-tune', 'zerolatency',  # Baixa latência
-                '-maxrate', '4000k',  # Bitrate máximo
-                '-bufsize', '8000k',  # Buffer size
-                '-g', '60',  # GOP size (2 segundos a 30fps)
-                '-keyint_min', '60',  # Keyframe mínimo
-                '-c:a', 'aac',  # Codec de áudio
-                '-b:a', '128k',  # Bitrate de áudio
-                '-ar', '44100',  # Sample rate
-                '-ac', '2',  # Canais de áudio (stereo)
-                '-f', 'flv',  # Formato de saída
-                '-flvflags', 'no_duration_filesize',  # Flag para FLV
-                '-loglevel', 'info',  # Nível de log
+                '-c:v', 'libx264',  # Codec de vídeo H.264 (recomendado pelo YouTube)
+                '-preset', 'veryfast',  # Preset rápido para baixa latência
+                '-tune', 'zerolatency',  # Otimização para baixa latência
+                '-profile:v', 'high',  # Perfil High (recomendado para 1080p)
+                '-level', '4.0',  # Nível H.264 4.0 (compatível com YouTube)
+                '-maxrate', '4000k',  # Bitrate máximo: 4000k (dentro da faixa recomendada)
+                '-bufsize', '8000k',  # Buffer size: 2x o bitrate (recomendado)
+                '-g', '60',  # GOP size: 60 frames (2 segundos a 30fps - recomendado)
+                '-keyint_min', '60',  # Keyframe mínimo: igual ao GOP
+                '-sc_threshold', '0',  # Desabilita scene change detection (melhor para loop)
+                '-c:a', 'aac',  # Codec de áudio AAC (recomendado pelo YouTube)
+                '-b:a', '128k',  # Bitrate de áudio: 128k (recomendado)
+                '-ar', '44100',  # Sample rate: 44.1kHz (recomendado)
+                '-ac', '2',  # Canais de áudio: stereo (recomendado)
+                '-f', 'flv',  # Formato de saída: FLV (RTMP requer FLV)
+                '-flvflags', 'no_duration_filesize',  # Flag para FLV (otimização)
+                '-loglevel', 'warning',  # Nível de log: warning (reduz spam)
                 rtmp_full_url
             ]
             
