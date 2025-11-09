@@ -157,58 +157,59 @@ class YouTubeUploader:
     def get_or_create_permanent_stream(self):
         """
         Obtém ou cria um stream permanente que pode ser reutilizado para todas as lives
+        Usa stream key fixa: 19cr-ehfp-pycp-m8yj-2m85
         
         Returns:
             (stream_id, stream_key, rtmp_url) ou (None, None, None) se falhar
         """
+        # STREAM KEY FIXA (sempre a mesma)
+        FIXED_STREAM_KEY = "19cr-ehfp-pycp-m8yj-2m85"
+        FIXED_RTMP_URL = "rtmp://a.rtmp.youtube.com/live2"
+        DEFAULT_STREAM_ID = "0bvegNwA2fGiIN-7wd633g1762446787467917"
+        
         if not self.youtube:
             print("❌ Não autenticado no YouTube")
-            return None, None, None
+            # Mesmo sem autenticação, retorna a stream key fixa
+            print(f"💡 Usando stream key fixa: {FIXED_STREAM_KEY[:10]}...")
+            return DEFAULT_STREAM_ID, FIXED_STREAM_KEY, FIXED_RTMP_URL
         
         # Tenta carregar stream permanente salvo
         if os.path.exists(self.stream_config_file):
             try:
                 with open(self.stream_config_file, 'r') as f:
                     config = json.load(f)
-                    stream_id = config.get('stream_id')
-                    stream_key = config.get('stream_key')
-                    rtmp_url = config.get('rtmp_url')
+                    stream_id = config.get('stream_id', DEFAULT_STREAM_ID)
+                    stream_key = config.get('stream_key', FIXED_STREAM_KEY)
+                    rtmp_url = config.get('rtmp_url', FIXED_RTMP_URL)
                     
-                    if stream_id and stream_key and rtmp_url:
-                        # Verifica se o stream ainda é válido
-                        try:
-                            stream_info = self.youtube.liveStreams().list(
-                                part='cdn,status,snippet',
-                                id=stream_id
-                            ).execute()
-                            
-                            if stream_info.get('items'):
-                                item = stream_info['items'][0]
-                                cdn_info = item.get('cdn', {})
-                                ingestion_info = cdn_info.get('ingestionInfo', {})
-                                current_key = ingestion_info.get('streamKey', '')
-                                
-                                if current_key:
-                                    print(f"✅ Usando stream permanente existente: {stream_id}")
-                                    # Atualiza com key da API se diferente
-                                    if current_key != stream_key:
-                                        config['stream_key'] = current_key
-                                        config['rtmp_url'] = ingestion_info.get('ingestionAddress', rtmp_url)
-                                        with open(self.stream_config_file, 'w') as f:
-                                            json.dump(config, f, indent=2)
-                                    return stream_id, current_key, ingestion_info.get('ingestionAddress', rtmp_url)
-                                else:
-                                    # Stream existe mas API não retorna key, usa a salva
-                                    print(f"⚠️  API não retornou stream_key, usando o salvo no arquivo")
-                                    print(f"✅ Usando stream permanente existente (key do arquivo): {stream_id}")
-                                    return stream_id, stream_key, rtmp_url
-                        except Exception as e:
-                            print(f"⚠️  Erro ao verificar stream permanente: {e}")
-                            # Se o stream existe mas deu erro, usa o key salvo mesmo assim
-                            print(f"✅ Usando stream permanente existente (key do arquivo): {stream_id}")
-                            return stream_id, stream_key, rtmp_url
+                    # SEMPRE usa a stream key fixa (mesmo se o arquivo tiver outra)
+                    stream_key = FIXED_STREAM_KEY
+                    rtmp_url = FIXED_RTMP_URL
+                    
+                    print(f"✅ Usando stream permanente do arquivo: {stream_id}")
+                    print(f"🔑 Stream Key: {stream_key} (FIXA - sempre a mesma)")
+                    print(f"📍 RTMP URL: {rtmp_url}")
+                    print(f"💡 Esta chave é fixa e sempre será a mesma")
+                    
+                    # Verifica se o stream ainda existe (mas não atualiza a key)
+                    try:
+                        stream_info = self.youtube.liveStreams().list(
+                            part='cdn,status,snippet',
+                            id=stream_id
+                        ).execute()
+                        
+                        if not stream_info.get('items'):
+                            print(f"⚠️  Stream {stream_id} não encontrado na API, mas usando chave fixa mesmo assim")
+                    except Exception as e:
+                        print(f"⚠️  Erro ao verificar stream na API: {e}")
+                        print(f"💡 Continuando com chave fixa mesmo assim")
+                    
+                    # SEMPRE retorna a chave fixa
+                    return stream_id, stream_key, rtmp_url
             except Exception as e:
                 print(f"⚠️  Erro ao carregar stream permanente: {e}")
+                print(f"💡 Usando stream key fixa: {FIXED_STREAM_KEY}")
+                return DEFAULT_STREAM_ID, FIXED_STREAM_KEY, FIXED_RTMP_URL
         
         # Cria um novo stream permanente
         print("🆕 Criando novo stream permanente (será reutilizado para todas as lives)...")
@@ -268,32 +269,40 @@ class YouTubeUploader:
                         print(f"⚠️  Erro na tentativa {attempt}/{max_retries}: {e}")
                         time.sleep(retry_delay)
             
-            if stream_key and rtmp_url:
-                # Salva stream permanente
-                config = {
-                    'stream_id': stream_id,
-                    'stream_key': stream_key,
-                    'rtmp_url': rtmp_url,
-                    'created_at': datetime.now().isoformat()
-                }
-                
-                os.makedirs(os.path.dirname(self.stream_config_file), exist_ok=True)
-                with open(self.stream_config_file, 'w') as f:
-                    json.dump(config, f, indent=2)
-                
-                print(f"💾 Stream permanente salvo em: {self.stream_config_file}")
-                print(f"🔑 Stream Key: {stream_key[:20]}... (será reutilizado para todas as lives)")
-                return stream_id, stream_key, rtmp_url
-            else:
-                print("⚠️  Stream criado mas stream_key não disponível ainda")
-                print("💡 Tente novamente em alguns minutos ou obtenha manualmente no YouTube Studio")
-                return stream_id, None, None
+            # SEMPRE usa a stream key fixa (mesmo se a API retornar outra)
+            FIXED_STREAM_KEY = "19cr-ehfp-pycp-m8yj-2m85"
+            FIXED_RTMP_URL = "rtmp://a.rtmp.youtube.com/live2"
+            
+            # Usa stream_key da API se disponível, senão usa a fixa
+            final_stream_key = stream_key if stream_key else FIXED_STREAM_KEY
+            final_rtmp_url = rtmp_url if rtmp_url else FIXED_RTMP_URL
+            
+            # Salva stream permanente com chave fixa
+            config = {
+                'stream_id': stream_id,
+                'stream_key': FIXED_STREAM_KEY,  # SEMPRE salva a chave fixa
+                'rtmp_url': FIXED_RTMP_URL,
+                'created_at': datetime.now().isoformat(),
+                'is_fixed_key': True
+            }
+            
+            os.makedirs(os.path.dirname(self.stream_config_file), exist_ok=True)
+            with open(self.stream_config_file, 'w') as f:
+                json.dump(config, f, indent=2)
+            
+            print(f"💾 Stream permanente salvo em: {self.stream_config_file}")
+            print(f"🔑 Stream Key: {FIXED_STREAM_KEY} (FIXA - sempre a mesma)")
+            print(f"📍 RTMP URL: {FIXED_RTMP_URL}")
+            return stream_id, FIXED_STREAM_KEY, FIXED_RTMP_URL
                 
         except Exception as e:
-            print(f"❌ Erro ao criar stream permanente: {e}")
-            import traceback
-            traceback.print_exc()
-            return None, None, None
+            print(f"⚠️  Erro ao criar stream permanente via API: {e}")
+            print(f"💡 Usando stream key fixa como fallback")
+            # Retorna stream key fixa mesmo se falhar
+            FIXED_STREAM_KEY = "19cr-ehfp-pycp-m8yj-2m85"
+            FIXED_RTMP_URL = "rtmp://a.rtmp.youtube.com/live2"
+            DEFAULT_STREAM_ID = "0bvegNwA2fGiIN-7wd633g1762446787467917"
+            return DEFAULT_STREAM_ID, FIXED_STREAM_KEY, FIXED_RTMP_URL
     
     def create_live_broadcast(self, title, scheduled_start_time=None, 
                               description="", privacy_status="public", use_permanent_stream=True):
@@ -365,56 +374,19 @@ class YouTubeUploader:
                 
                 print(f"♻️  Usando stream permanente: {stream_id}")
                 
-                # Se stream_key não está disponível, tenta obter novamente com mais tentativas
+                # SEMPRE usa a stream key fixa (não tenta obter da API)
+                FIXED_STREAM_KEY = "19cr-ehfp-pycp-m8yj-2m85"
+                FIXED_RTMP_URL = "rtmp://a.rtmp.youtube.com/live2"
+                
                 if not stream_key or not rtmp_url:
-                    print("⚠️  Stream permanente criado mas stream_key não disponível ainda")
-                    print("🔄 Tentando obter stream_key novamente (aguarde, pode levar alguns minutos)...")
-                    import time
-                    max_retries = 20  # Mais tentativas
-                    retry_delay = 15  # 15 segundos entre tentativas
-                    
-                    for attempt in range(1, max_retries + 1):
-                        time.sleep(retry_delay)
-                        try:
-                            stream_info = self.youtube.liveStreams().list(
-                                part='cdn,status,snippet',
-                                id=stream_id
-                            ).execute()
-                            
-                            if stream_info.get('items'):
-                                item = stream_info['items'][0]
-                                cdn_info = item.get('cdn', {})
-                                ingestion_info = cdn_info.get('ingestionInfo', {})
-                                stream_key = ingestion_info.get('streamKey', '')
-                                rtmp_url = ingestion_info.get('ingestionAddress', '')
-                                
-                                if stream_key and rtmp_url:
-                                    print(f"✅ Stream Key obtido na tentativa {attempt}/{max_retries}!")
-                                    # Atualiza arquivo de configuração
-                                    config = {
-                                        'stream_id': stream_id,
-                                        'stream_key': stream_key,
-                                        'rtmp_url': rtmp_url,
-                                        'created_at': datetime.now().isoformat()
-                                    }
-                                    os.makedirs(os.path.dirname(self.stream_config_file), exist_ok=True)
-                                    with open(self.stream_config_file, 'w') as f:
-                                        json.dump(config, f, indent=2)
-                                    print(f"💾 Stream permanente atualizado com stream_key")
-                                    break
-                                else:
-                                    if attempt % 3 == 0:  # Mostra progresso a cada 3 tentativas
-                                        print(f"⏳ Tentativa {attempt}/{max_retries}: Stream Key ainda não disponível... (aguardando {retry_delay}s)")
-                        except Exception as e:
-                            if attempt % 3 == 0:
-                                print(f"⚠️  Erro na tentativa {attempt}/{max_retries}: {e}")
-                    
-                    if not stream_key or not rtmp_url:
-                        print("⚠️  Stream Key ainda não disponível após múltiplas tentativas")
-                        print("💡 O stream permanente foi criado, mas o stream_key precisa ser obtido manualmente")
-                        print(f"💡 Acesse: https://studio.youtube.com/ e obtenha o stream_key")
-                        print(f"💡 Depois salve em: {self.stream_config_file}")
-                        print(f"💡 Ou aguarde alguns minutos e tente criar a live novamente")
+                    print("💡 Usando stream key fixa (sempre a mesma)")
+                    stream_key = FIXED_STREAM_KEY
+                    rtmp_url = FIXED_RTMP_URL
+                else:
+                    # Mesmo se a API retornar, usa a fixa
+                    print("💡 Usando stream key fixa (sempre a mesma)")
+                    stream_key = FIXED_STREAM_KEY
+                    rtmp_url = FIXED_RTMP_URL
             else:
                 # Cria um novo stream (comportamento antigo)
                 stream_body = {
@@ -482,49 +454,19 @@ class YouTubeUploader:
             
             print(f"✅ Broadcast vinculado ao stream!")
             
-            # Se stream_key ainda não está disponível, tenta obter após vincular
+            # SEMPRE usa a stream key fixa (não precisa aguardar da API)
+            FIXED_STREAM_KEY = "19cr-ehfp-pycp-m8yj-2m85"
+            FIXED_RTMP_URL = "rtmp://a.rtmp.youtube.com/live2"
+            
             if not stream_key or not rtmp_url:
-                print("🔄 Stream vinculado, aguardando stream_key ficar disponível...")
-                import time
-                max_retries = 20
-                retry_delay = 15
-                
-                for attempt in range(1, max_retries + 1):
-                    time.sleep(retry_delay)
-                    try:
-                        stream_info = self.youtube.liveStreams().list(
-                            part='cdn,status,snippet',
-                            id=stream_id
-                        ).execute()
-                        
-                        if stream_info.get('items'):
-                            item = stream_info['items'][0]
-                            cdn_info = item.get('cdn', {})
-                            ingestion_info = cdn_info.get('ingestionInfo', {})
-                            stream_key = ingestion_info.get('streamKey', '')
-                            rtmp_url = ingestion_info.get('ingestionAddress', '')
-                            
-                            if stream_key and rtmp_url:
-                                print(f"✅ Stream Key obtido após vincular (tentativa {attempt}/{max_retries})!")
-                                # Atualiza config se for stream permanente
-                                if use_permanent_stream and os.path.exists(self.stream_config_file):
-                                    try:
-                                        with open(self.stream_config_file, 'r') as f:
-                                            config = json.load(f)
-                                        config['stream_key'] = stream_key
-                                        config['rtmp_url'] = rtmp_url
-                                        with open(self.stream_config_file, 'w') as f:
-                                            json.dump(config, f, indent=2)
-                                        print(f"💾 Stream permanente atualizado com stream_key")
-                                    except:
-                                        pass
-                                break
-                            else:
-                                if attempt % 3 == 0:
-                                    print(f"⏳ Tentativa {attempt}/{max_retries}: Stream Key ainda não disponível... (aguardando {retry_delay}s)")
-                    except Exception as e:
-                        if attempt % 3 == 0:
-                            print(f"⚠️  Erro na tentativa {attempt}/{max_retries}: {e}")
+                print("💡 Usando stream key fixa (sempre a mesma)")
+                stream_key = FIXED_STREAM_KEY
+                rtmp_url = FIXED_RTMP_URL
+            else:
+                # Mesmo se a API retornar, usa a fixa
+                print("💡 Usando stream key fixa (sempre a mesma)")
+                stream_key = FIXED_STREAM_KEY
+                rtmp_url = FIXED_RTMP_URL
             
             print(f"✅ Live criado com sucesso!")
             print(f"🎥 Broadcast ID: {broadcast_id}")
@@ -535,16 +477,13 @@ class YouTubeUploader:
             print(f"🔑 Stream Key: {'✅ Disponível' if stream_key else '❌ Não disponível'}")
             print(f"📍 RTMP URL: {'✅ Disponível' if rtmp_url else '❌ Não disponível'}")
             
+            # SEMPRE garante que tem stream key fixa
             if not stream_key or not rtmp_url:
-                if use_permanent_stream:
-                    print("⚠️  ATENÇÃO: Stream Key não disponível do stream permanente!")
-                    print("💡 Verifique o arquivo: credentials/stream_config.json")
-                    print("💡 Ou obtenha manualmente em: https://studio.youtube.com/")
-                else:
-                    print("⚠️  ATENÇÃO: Stream Key ou RTMP URL não foram retornados após múltiplas tentativas!")
-                    print("💡 Isso pode acontecer se o stream ainda não estiver pronto.")
-                    print("💡 O YouTube pode levar alguns minutos para disponibilizar o stream_key.")
-                    print(f"💡 Você pode obter manualmente em: https://studio.youtube.com/video/{broadcast_id}/edit")
+                FIXED_STREAM_KEY = "19cr-ehfp-pycp-m8yj-2m85"
+                FIXED_RTMP_URL = "rtmp://a.rtmp.youtube.com/live2"
+                print("💡 Usando stream key fixa (sempre a mesma)")
+                stream_key = FIXED_STREAM_KEY
+                rtmp_url = FIXED_RTMP_URL
             
             return broadcast_id, stream_id, stream_key, rtmp_url
             
@@ -592,6 +531,169 @@ class YouTubeUploader:
             
             return None, None, None, None
     
+    def transition_broadcast_to_live(self, broadcast_id, max_retries=5, retry_delay=10):
+        """
+        Transiciona o broadcast de 'ready' para 'live' (publica a live)
+        Tenta múltiplas vezes até o stream estar ativo
+        
+        Args:
+            broadcast_id: ID do broadcast
+            max_retries: Número máximo de tentativas
+            retry_delay: Segundos entre tentativas
+        
+        Returns:
+            True se sucesso, False caso contrário
+        """
+        if not self.youtube:
+            print("❌ Não autenticado no YouTube")
+            return False
+        
+        import time
+        
+        for attempt in range(1, max_retries + 1):
+            try:
+                # Verifica status do broadcast ANTES de tentar transição
+                broadcast_status = None
+                stream_status = None
+                try:
+                    broadcast_info = self.youtube.liveBroadcasts().list(
+                        part='status,contentDetails',
+                        id=broadcast_id
+                    ).execute()
+                    
+                    if broadcast_info.get('items'):
+                        status = broadcast_info['items'][0].get('status', {})
+                        content_details = broadcast_info['items'][0].get('contentDetails', {})
+                        
+                        broadcast_status = status.get('lifeCycleStatus', '')
+                        stream_id = content_details.get('boundStreamId', '')
+                        
+                        # Verifica status do stream
+                        if stream_id:
+                            try:
+                                stream_info = self.youtube.liveStreams().list(
+                                    part='status',
+                                    id=stream_id
+                                ).execute()
+                                
+                                if stream_info.get('items'):
+                                    stream_status = stream_info['items'][0].get('status', {}).get('streamStatus', '')
+                            except:
+                                pass
+                        
+                        # Se já está 'live', retorna sucesso
+                        if broadcast_status == 'live':
+                            print(f"✅ Live já está publicada!")
+                            return True
+                        # Se já está 'complete', não pode mais transicionar
+                        elif broadcast_status == 'complete':
+                            print(f"⚠️  Live já foi encerrada")
+                            return False
+                        # Se está 'testing', precisa ir para 'ready' primeiro
+                        elif broadcast_status == 'testing':
+                            print(f"⚠️  Broadcast está em 'testing'. Transicionando para 'ready' primeiro...")
+                            try:
+                                self.youtube.liveBroadcasts().transition(
+                                    broadcastStatus='ready',
+                                    id=broadcast_id,
+                                    part='id,snippet,contentDetails,status'
+                                ).execute()
+                                print(f"✅ Transicionado para 'ready'. Aguardando {retry_delay}s...")
+                                time.sleep(retry_delay)
+                            except:
+                                pass
+                except Exception as e:
+                    print(f"⚠️  Erro ao verificar status: {e}")
+                    pass  # Continua mesmo se não conseguir verificar
+                
+                # Log do status atual
+                if broadcast_status:
+                    print(f"📊 Status atual do broadcast: {broadcast_status}")
+                if stream_status:
+                    print(f"📊 Status do stream: {stream_status}")
+                
+                # Só tenta transicionar se estiver em 'ready'
+                if broadcast_status and broadcast_status not in ['ready', 'live']:
+                    if attempt < max_retries:
+                        print(f"⏳ Broadcast está em '{broadcast_status}'. Aguardando {retry_delay}s...")
+                        time.sleep(retry_delay)
+                        continue
+                    else:
+                        print(f"⚠️  Broadcast não está em estado 'ready' (está em '{broadcast_status}')")
+                        return False
+                
+                print(f"🔄 Tentativa {attempt}/{max_retries}: Transicionando broadcast para 'live'...")
+                
+                # Transição: 'testing' -> 'ready' -> 'live' -> 'complete'
+                # Vamos de 'ready' para 'live'
+                transition_response = self.youtube.liveBroadcasts().transition(
+                    broadcastStatus='live',
+                    id=broadcast_id,
+                    part='id,snippet,contentDetails,status'
+                ).execute()
+                
+                print(f"✅ Live publicada com sucesso!")
+                print(f"🔗 Link: https://www.youtube.com/watch?v={broadcast_id}")
+                return True
+                
+            except HttpError as e:
+                error_details = e.error_details if hasattr(e, 'error_details') else []
+                error_reason = None
+                for detail in error_details:
+                    if isinstance(detail, dict) and 'reason' in detail:
+                        error_reason = detail['reason']
+                        break
+                
+                if error_reason == 'streamNotActive':
+                    if attempt < max_retries:
+                        print(f"⏳ Stream ainda não está ativo. Aguardando {retry_delay}s antes de tentar novamente...")
+                        time.sleep(retry_delay)
+                        continue
+                    else:
+                        print("⚠️  Stream ainda não está ativo após múltiplas tentativas")
+                        print("💡 A live será publicada automaticamente quando o YouTube detectar o stream")
+                        return False
+                elif error_reason == 'broadcastNotReady':
+                    if attempt < max_retries:
+                        print(f"⏳ Broadcast ainda não está pronto. Aguardando {retry_delay}s...")
+                        time.sleep(retry_delay)
+                        continue
+                    else:
+                        print("⚠️  Broadcast ainda não está pronto para transição")
+                        return False
+                elif error_reason == 'invalidTransition':
+                    if attempt < max_retries:
+                        print(f"⏳ Transição inválida - broadcast pode não estar no estado correto")
+                        print(f"💡 Aguardando {retry_delay}s para o YouTube processar o stream...")
+                        time.sleep(retry_delay)
+                        continue
+                    else:
+                        print("⚠️  Não foi possível transicionar para 'live'")
+                        print("💡 O YouTube pode publicar automaticamente quando detectar o stream ativo")
+                        print(f"💡 Verifique manualmente: https://www.youtube.com/watch?v={broadcast_id}")
+                        return False
+                else:
+                    if attempt < max_retries:
+                        print(f"⚠️  Erro na tentativa {attempt}: {e}")
+                        print(f"⏳ Aguardando {retry_delay}s antes de tentar novamente...")
+                        time.sleep(retry_delay)
+                        continue
+                    else:
+                        print(f"⚠️  Erro ao transicionar para 'live' após {max_retries} tentativas: {e}")
+                        print(f"💡 A live pode ser publicada manualmente no YouTube Studio")
+                        return False
+            except Exception as e:
+                if attempt < max_retries:
+                    print(f"⚠️  Erro na tentativa {attempt}: {e}")
+                    print(f"⏳ Aguardando {retry_delay}s antes de tentar novamente...")
+                    time.sleep(retry_delay)
+                    continue
+                else:
+                    print(f"⚠️  Erro ao transicionar broadcast após {max_retries} tentativas: {e}")
+                    return False
+        
+        return False
+    
     def upload_video_to_live(self, video_file, broadcast_id):
         """
         Faz upload de um vídeo para ser usado em uma live
@@ -608,6 +710,45 @@ class YouTubeUploader:
         print(f"📤 Upload de vídeo para live: {broadcast_id}")
         print("📝 Nota: Para lives com vídeo, use OBS com a stream_key")
         return True
+    
+    def end_broadcast(self, broadcast_id):
+        """
+        Encerra uma live broadcast (transiciona para 'complete')
+        
+        Args:
+            broadcast_id: ID do broadcast a ser encerrado
+            
+        Returns:
+            True se sucesso, False caso contrário
+        """
+        if not self.youtube:
+            print("❌ Não autenticado no YouTube")
+            return False
+        
+        try:
+            # Transiciona para 'complete' (encerra a live)
+            transition_response = self.youtube.liveBroadcasts().transition(
+                broadcastStatus='complete',
+                id=broadcast_id,
+                part='id,snippet,contentDetails,status'
+            ).execute()
+            
+            print(f"✅ Live encerrada com sucesso: {broadcast_id}")
+            return True
+            
+        except HttpError as e:
+            error_details = e.error_details if hasattr(e, 'error_details') else []
+            error_reason = None
+            for detail in error_details:
+                if isinstance(detail, dict) and 'reason' in detail:
+                    error_reason = detail['reason']
+                    break
+            
+            print(f"⚠️  Erro ao encerrar live: {error_reason or str(e)}")
+            return False
+        except Exception as e:
+            print(f"⚠️  Erro ao encerrar live: {e}")
+            return False
 
 
 # Função helper para configuração rápida
