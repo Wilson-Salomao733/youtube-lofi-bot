@@ -181,6 +181,7 @@ Tags: #sonsdanatureza #chuva #relaxar #dormir #meditação #natureza #sleep #rel
             logger.warning("⚠️  Workflow já em execução, ignorando...")
             return
         
+        try:
             self.workflow_running = True
             
             # Log de início com timestamp

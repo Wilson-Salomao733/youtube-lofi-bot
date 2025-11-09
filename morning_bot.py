@@ -163,6 +163,7 @@ Tags: #lofi #estudar #música #trabalhar #concentração #chill #beats #hiphop #
             logger.warning("⚠️  Workflow já em execução, ignorando...")
             return
         
+        try:
             self.workflow_running = True
             
             # Log de início com timestamp
