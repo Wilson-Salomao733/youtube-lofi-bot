@@ -164,8 +164,7 @@ Tags: #lofi #estudar #música #trabalhar #concentração #chill #beats #hiphop #
         self.workflow_running = True
         
         # Log de início com timestamp
-        import datetime
-        logger.info(f"🕐 Iniciando workflow às {datetime.datetime.now().strftime('%H:%M:%S')}")
+        logger.info(f"🕐 Iniciando workflow às {datetime.now().strftime('%H:%M:%S')}")
         
         try:
             logger.info("=" * 60)
@@ -271,8 +270,9 @@ Tags: #lofi #estudar #música #trabalhar #concentração #chill #beats #hiphop #
                                 break
                         
                         # Log de status a cada hora
-                        if datetime.now().minute == 0:
-                            logger.info(f"📊 Live ativa - {datetime.now().strftime('%H:%M')} - Até 19h")
+                        now = datetime.now()
+                        if now.minute == 0:
+                            logger.info(f"📊 Live ativa - {now.strftime('%H:%M')} - Até 19h")
             else:
                 logger.error("❌ Falha ao iniciar live")
                 
@@ -290,7 +290,6 @@ Tags: #lofi #estudar #música #trabalhar #concentração #chill #beats #hiphop #
         logger.info("⏰ Live ficará no ar até 19h")
         
         # Verifica se deve executar agora baseado no horário
-        from datetime import datetime
         current_hour = datetime.now().hour
         
         # Se estiver entre 7h e 19h, executa o fluxo da manhã

@@ -182,8 +182,7 @@ Tags: #sonsdanatureza #chuva #relaxar #dormir #meditação #natureza #sleep #rel
         self.workflow_running = True
         
         # Log de início com timestamp
-        import datetime
-        logger.info(f"🕐 Iniciando workflow às {datetime.datetime.now().strftime('%H:%M:%S')}")
+        logger.info(f"🕐 Iniciando workflow às {datetime.now().strftime('%H:%M:%S')}")
         
         try:
             logger.info("=" * 60)
@@ -239,8 +238,9 @@ Tags: #sonsdanatureza #chuva #relaxar #dormir #meditação #natureza #sleep #rel
                             break
                     
                     # Log de status a cada hora
-                    if datetime.now().minute == 0:
-                        logger.info(f"📊 Live noturna ativa - {datetime.now().strftime('%H:%M')} - Até 3h da manhã")
+                    now = datetime.now()
+                    if now.minute == 0:
+                        logger.info(f"📊 Live noturna ativa - {now.strftime('%H:%M')} - Até 3h da manhã")
             else:
                 logger.error("❌ Falha ao iniciar live")
                 
@@ -258,7 +258,6 @@ Tags: #sonsdanatureza #chuva #relaxar #dormir #meditação #natureza #sleep #rel
         logger.info("⏰ Live ficará no ar até 3h da manhã")
         
         # Verifica se deve executar agora baseado no horário
-        from datetime import datetime
         current_hour = datetime.now().hour
         
         # Se NÃO estiver entre 7h e 19h, executa o fluxo da noite
