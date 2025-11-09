@@ -114,7 +114,7 @@ Tags: #lofi #estudar #música #trabalhar #concentração #chill #beats #hiphop #
             broadcast_id, stream_id, stream_key, rtmp_url = self.live_manager.create_live(
                 title=title,
                 description=description,
-                scheduled_minutes=3,
+                scheduled_minutes=0,  # 0 = sem agendamento, início imediato
                 privacy_status="public"
             )
             

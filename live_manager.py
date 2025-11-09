@@ -198,7 +198,7 @@ class LiveManager:
             
             # Aguarda um pouco para verificar se iniciou corretamente
             # ffmpeg pode demorar alguns segundos para conectar ao RTMP
-            time.sleep(10)  # Aguarda 10 segundos para conectar ao RTMP
+            time.sleep(60)  # Aguarda 10 segundos para conectar ao RTMP
             
             # Verifica se ainda está rodando
             if self.ffmpeg_process.poll() is not None:
@@ -304,7 +304,7 @@ class LiveManager:
                 # Tenta ler uma linha do stderr para verificar se está enviando
                 if hasattr(self.ffmpeg_process.stderr, 'readline'):
                     # Aguarda um pouco mais para ver se há output
-                    time.sleep(5)
+                    time.sleep(60)
                     # Verifica se há dados disponíveis (não bloqueia)
                     if select.select([self.ffmpeg_process.stderr], [], [], 0.1)[0]:
                         line = self.ffmpeg_process.stderr.readline()
