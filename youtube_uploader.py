@@ -564,21 +564,38 @@ class YouTubeUploader:
                     if broadcast_info.get('items'):
                         status = broadcast_info['items'][0].get('status', {})
                         content_details = broadcast_info['items'][0].get('contentDetails', {})
+                        snippet = broadcast_info['items'][0].get('snippet', {})
                         
                         broadcast_status = status.get('lifeCycleStatus', '')
+                        recording_status = status.get('recordingStatus', '')
+                        made_for_kids = snippet.get('selfDeclaredMadeForKids', False)
                         stream_id = content_details.get('boundStreamId', '')
+                        
+                        # Log detalhado do status
+                        print(f"   📋 Detalhes do broadcast:")
+                        print(f"      - lifeCycleStatus: {broadcast_status}")
+                        print(f"      - recordingStatus: {recording_status}")
+                        print(f"      - madeForKids: {made_for_kids}")
+                        print(f"      - boundStreamId: {stream_id}")
                         
                         # Verifica status do stream
                         if stream_id:
                             try:
                                 stream_info = self.youtube.liveStreams().list(
-                                    part='status',
+                                    part='status,snippet',
                                     id=stream_id
                                 ).execute()
                                 
                                 if stream_info.get('items'):
-                                    stream_status = stream_info['items'][0].get('status', {}).get('streamStatus', '')
-                            except:
+                                    stream_status_obj = stream_info['items'][0].get('status', {})
+                                    stream_status = stream_status_obj.get('streamStatus', '')
+                                    health_status = stream_status_obj.get('healthStatus', {})
+                                    
+                                    print(f"   📋 Detalhes do stream:")
+                                    print(f"      - streamStatus: {stream_status}")
+                                    print(f"      - healthStatus: {health_status}")
+                            except Exception as e:
+                                print(f"   ⚠️  Erro ao obter detalhes do stream: {e}")
                                 pass
                         
                         # Se já está 'live', retorna sucesso
@@ -642,13 +659,37 @@ class YouTubeUploader:
                 print(f"🔄 Tentativa {attempt}/{max_retries}: Transicionando broadcast para 'live'...")
                 print(f"   📊 Broadcast: {broadcast_status}, Stream: {stream_status}")
                 
+                # Verifica se o stream está ativo há tempo suficiente
+                # O YouTube pode precisar de pelo menos 2-3 minutos de stream ativo antes de permitir transição
+                if attempt < 3 and stream_status == 'active':
+                    print(f"💡 Stream está ativo mas pode precisar de mais tempo. Aguardando {retry_delay}s...")
+                    time.sleep(retry_delay)
+                    continue
+                
                 # Transição: 'testing' -> 'ready' -> 'live' -> 'complete'
                 # Vamos de 'ready' para 'live'
-                transition_response = self.youtube.liveBroadcasts().transition(
-                    broadcastStatus='live',
-                    id=broadcast_id,
-                    part='id,snippet,contentDetails,status'
-                ).execute()
+                try:
+                    transition_response = self.youtube.liveBroadcasts().transition(
+                        broadcastStatus='live',
+                        id=broadcast_id,
+                        part='id,snippet,contentDetails,status'
+                    ).execute()
+                except Exception as e:
+                    # Se falhar, tenta verificar se já está live (pode ter sido publicado automaticamente)
+                    try:
+                        check_response = self.youtube.liveBroadcasts().list(
+                            part='status',
+                            id=broadcast_id
+                        ).execute()
+                        if check_response.get('items'):
+                            current_status = check_response['items'][0].get('status', {}).get('lifeCycleStatus', '')
+                            if current_status == 'live':
+                                print(f"✅ Live foi publicada automaticamente pelo YouTube!")
+                                print(f"🔗 Link: https://www.youtube.com/watch?v={broadcast_id}")
+                                return True
+                    except:
+                        pass
+                    raise  # Re-lança o erro original
                 
                 print(f"✅ Live publicada com sucesso!")
                 print(f"🔗 Link: https://www.youtube.com/watch?v={broadcast_id}")
