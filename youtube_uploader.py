@@ -3,7 +3,7 @@ Integração com YouTube API para upload de vídeos e criação de lives
 """
 import os
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
@@ -324,8 +324,6 @@ class YouTubeUploader:
         
         # YouTube API REQUER scheduledStartTime (mínimo 10 minutos no futuro)
         # Se não especificado, usa o mínimo necessário (10 minutos no futuro)
-        from datetime import timezone, timedelta
-        
         if scheduled_start_time is None:
             # Usa o mínimo necessário: 10 minutos no futuro
             now_utc = datetime.now(timezone.utc)
