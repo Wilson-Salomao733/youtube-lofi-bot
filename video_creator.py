@@ -398,31 +398,67 @@ class VideoCreator:
         print("   ⏳ Isso pode levar alguns minutos...")
         
         # Tenta criar o vídeo com tratamento de erro melhorado
-        max_retries = 2
+        max_retries = 3
         for attempt in range(max_retries):
             try:
+                # Usa preset mais leve nas tentativas seguintes para reduzir uso de recursos
+                preset = 'ultrafast' if attempt > 0 else 'medium'
+                bitrate = '6000k' if attempt > 0 else '8000k'
+                
+                if attempt > 0:
+                    print(f"   🔄 Tentativa {attempt + 1}/{max_retries} com preset mais leve...")
+                    # Recria o video_clip se necessário
+                    try:
+                        video_clip.close()
+                        audio_clip.close()
+                    except:
+                        pass
+                    
+                    # Recria os clips
+                    video_clip = ImageSequenceClip(valid_frames, fps=fps)
+                    audio_clip = AudioFileClip(audio_path)
+                    if audio_clip.duration < video_clip.duration:
+                        loops_needed = int(video_clip.duration / audio_clip.duration) + 1
+                        audio_clip = concatenate_audioclips([audio_clip] * loops_needed)
+                    audio_clip = audio_clip.subclip(0, video_clip.duration)
+                    video_clip = video_clip.set_audio(audio_clip)
+                
                 video_clip.write_videofile(
                     output_path,
                     fps=fps,
                     codec='libx264',
                     audio_codec='aac',
-                    bitrate='8000k',
-                    preset='medium',
+                    bitrate=bitrate,
+                    preset=preset,
                     logger=None,
-                    verbose=False
+                    verbose=False,
+                    threads=2  # Limita threads para reduzir uso de recursos
                 )
                 break  # Sucesso, sai do loop
             except (BrokenPipeError, OSError) as e:
                 if attempt < max_retries - 1:
                     print(f"   ⚠️  Erro ao criar vídeo (tentativa {attempt + 1}/{max_retries}): {e}")
-                    print("   🔄 Tentando novamente em 5 segundos...")
-                    time.sleep(5)
-                    # Tenta limpar recursos antes de tentar novamente
+                    print("   🔄 Tentando novamente em 10 segundos com configurações mais leves...")
+                    time.sleep(10)
+                    # Limpa recursos antes de tentar novamente
                     try:
                         video_clip.close()
+                        audio_clip.close()
+                    except:
+                        pass
+                    # Limpa arquivo parcial se existir
+                    try:
+                        if os.path.exists(output_path):
+                            os.remove(output_path)
                     except:
                         pass
                 else:
+                    # Limpa recursos antes de lançar erro
+                    try:
+                        video_clip.close()
+                        audio_clip.close()
+                    except:
+                        pass
                     raise  # Re-lança o erro na última tentativa
         
         # Limpa recursos
