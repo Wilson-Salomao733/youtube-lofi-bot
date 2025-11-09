@@ -48,14 +48,14 @@ class LiveManager:
         
         return False
     
-    def create_live(self, title, description, scheduled_minutes=3, privacy_status="public"):
+    def create_live(self, title, description, scheduled_minutes=0, privacy_status="public"):
         """
         Cria uma live no YouTube
         
         Args:
             title: Título da live
             description: Descrição da live
-            scheduled_minutes: Minutos no futuro para agendar (mínimo 3)
+            scheduled_minutes: Minutos no futuro para agendar (0 = sem agendamento, início imediato)
             privacy_status: Status de privacidade
         
         Returns:
@@ -65,15 +65,20 @@ class LiveManager:
             return None, None, None, None
         
         try:
-            now_utc = datetime.now(timezone.utc)
-            scheduled_time = now_utc + timedelta(minutes=max(scheduled_minutes, 3))
+            # Se scheduled_minutes for 0, cria sem agendamento (início imediato)
+            scheduled_time = None
+            if scheduled_minutes > 0:
+                now_utc = datetime.now(timezone.utc)
+                scheduled_time = now_utc + timedelta(minutes=max(scheduled_minutes, 3))
+                self.logger.info(f"⏰ Criando live agendada para: {scheduled_time.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+            else:
+                self.logger.info(f"⏰ Criando live sem agendamento (início imediato)")
             
-            self.logger.info(f"⏰ Criando live agendada para: {scheduled_time.strftime('%Y-%m-%d %H:%M:%S UTC')}")
             self.logger.info(f"💡 Iniciando streaming IMEDIATAMENTE - YouTube publica quando detectar stream")
             
             broadcast_id, stream_id, stream_key, rtmp_url = self.uploader.create_live_broadcast(
                 title=title,
-                scheduled_start_time=scheduled_time,
+                scheduled_start_time=scheduled_time,  # None = sem agendamento
                 description=description,
                 privacy_status=privacy_status,
                 use_permanent_stream=True
