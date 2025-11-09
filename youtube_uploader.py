@@ -335,7 +335,6 @@ class YouTubeUploader:
             scheduled_start_time_str = scheduled_start_time.isoformat().replace('+00:00', 'Z')
         
         print(f"🎬 Criando live: {title}")
-        print(f"⏰ Agendado para: {scheduled_start_time}")
         
         try:
             # Cria o broadcast
@@ -355,7 +354,7 @@ class YouTubeUploader:
                 broadcast_body['snippet']['scheduledStartTime'] = scheduled_start_time_str
                 print(f"⏰ Agendado para: {scheduled_start_time_str}")
             else:
-                print("⏰ Live será iniciada imediatamente quando você começar a transmitir")
+                print("⏰ Live SEM agendamento - será iniciada imediatamente quando você começar a transmitir")
             
             broadcast_response = self.youtube.liveBroadcasts().insert(
                 part='snippet,contentDetails,status',
