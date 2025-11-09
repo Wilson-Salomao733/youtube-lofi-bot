@@ -198,7 +198,7 @@ class LiveManager:
             
             # Aguarda um pouco para verificar se iniciou corretamente
             # ffmpeg pode demorar alguns segundos para conectar ao RTMP
-            time.sleep(5)  # Aguarda 5 segundos inicialmente
+            time.sleep(10)  # Aguarda 10 segundos para conectar ao RTMP
             
             # Verifica se ainda está rodando
             if self.ffmpeg_process.poll() is not None:
@@ -295,6 +295,26 @@ class LiveManager:
             
             self.logger.info("✅ Streaming iniciado com sucesso via ffmpeg!")
             self.logger.info(f"🔄 Vídeo rodando em loop infinito")
+            
+            # Verifica se está realmente enviando dados (lê uma linha do stderr)
+            # Se o ffmpeg está conectado e enviando, veremos mensagens como "frame="
+            try:
+                import select
+                import sys
+                # Tenta ler uma linha do stderr para verificar se está enviando
+                if hasattr(self.ffmpeg_process.stderr, 'readline'):
+                    # Aguarda um pouco mais para ver se há output
+                    time.sleep(5)
+                    # Verifica se há dados disponíveis (não bloqueia)
+                    if select.select([self.ffmpeg_process.stderr], [], [], 0.1)[0]:
+                        line = self.ffmpeg_process.stderr.readline()
+                        if line and ('frame=' in line.lower() or 'size=' in line.lower()):
+                            self.logger.info("✅ ffmpeg está enviando frames para o YouTube!")
+                        elif line:
+                            self.logger.info(f"📊 Output do ffmpeg: {line.strip()[:100]}")
+            except Exception as e:
+                # Não é crítico se não conseguir ler
+                self.logger.debug(f"Debug: não foi possível verificar output do ffmpeg: {e}")
             
             return True
             
@@ -474,6 +494,20 @@ class LiveManager:
         # poll() retorna None se o processo ainda está rodando
         # Retorna código de saída (0 ou outro número) se terminou
         if poll_result is None:
+            # Processo está rodando - verifica se está realmente enviando dados
+            # Tenta ler uma linha do stderr para confirmar atividade
+            try:
+                import select
+                if hasattr(self.ffmpeg_process.stderr, 'readline'):
+                    # Verifica se há dados disponíveis (não bloqueia)
+                    if select.select([self.ffmpeg_process.stderr], [], [], 0.1)[0]:
+                        line = self.ffmpeg_process.stderr.readline()
+                        # Se há output com "frame=" ou "size=", está enviando dados
+                        if line and ('frame=' in line.lower() or 'size=' in line.lower()):
+                            return True  # Está ativo e enviando
+            except:
+                pass  # Se não conseguir verificar, assume que está ativo se o processo está rodando
+            
             return True  # Processo está ativo
         
         # Processo terminou - verifica se foi erro ou término normal
