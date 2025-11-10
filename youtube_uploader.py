@@ -612,15 +612,26 @@ class YouTubeUploader:
                         elif broadcast_status == 'testing':
                             print(f"⚠️  Broadcast está em 'testing'. Transicionando para 'ready' primeiro...")
                             try:
-                                self.youtube.liveBroadcasts().transition(
+                                transition_response = self.youtube.liveBroadcasts().transition(
                                     broadcastStatus='ready',
                                     id=broadcast_id,
                                     part='id,snippet,contentDetails,status'
                                 ).execute()
-                                print(f"✅ Transicionado para 'ready'. Aguardando {retry_delay}s...")
+                                print(f"✅ Comando de transição para 'ready' enviado. Aguardando {retry_delay}s...")
                                 time.sleep(retry_delay)
-                            except:
-                                pass
+                                
+                                # Verifica novamente o status após a transição
+                                check_response = self.youtube.liveBroadcasts().list(
+                                    part='status',
+                                    id=broadcast_id
+                                ).execute()
+                                if check_response.get('items'):
+                                    new_status = check_response['items'][0].get('status', {}).get('lifeCycleStatus', '')
+                                    broadcast_status = new_status
+                                    print(f"📊 Novo status após transição: {broadcast_status}")
+                            except Exception as e:
+                                print(f"⚠️  Erro ao transicionar de 'testing' para 'ready': {e}")
+                                # Continua para tentar novamente na próxima iteração
                 except Exception as e:
                     print(f"⚠️  Erro ao verificar status: {e}")
                     pass  # Continua mesmo se não conseguir verificar
@@ -630,6 +641,16 @@ class YouTubeUploader:
                     print(f"📊 Status atual do broadcast: {broadcast_status}")
                 if stream_status:
                     print(f"📊 Status do stream: {stream_status}")
+                
+                # Se ainda está em 'testing', aguarda mais e tenta novamente
+                if broadcast_status == 'testing':
+                    if attempt < max_retries:
+                        print(f"⏳ Broadcast ainda está em 'testing'. Aguardando {retry_delay}s antes de tentar novamente...")
+                        time.sleep(retry_delay)
+                        continue
+                    else:
+                        print(f"⚠️  Broadcast não saiu de 'testing' após {max_retries} tentativas")
+                        return False
                 
                 # Verifica se o stream está realmente ativo antes de tentar transicionar
                 if stream_status and stream_status != 'active':
