@@ -160,7 +160,7 @@ class LiveManager:
             # - Codec: H.264 (libx264) para vídeo, AAC para áudio
             # - Resolução: 1920x1080 (1080p) - detectada automaticamente do vídeo
             # - Frame rate: 30fps - detectado automaticamente do vídeo
-            # - Bitrate vídeo: 4000k (recomendado: 3000-6000k para 1080p)
+            # - Bitrate vídeo: 6000k (recomendado: 3000-6000k para 1080p, YouTube recomenda 6800k)
             # - Bitrate áudio: 128k (recomendado: 128k)
             # - Sample rate: 44100 Hz (recomendado: 44.1kHz ou 48kHz)
             # - Formato: FLV (RTMP requer FLV)
@@ -174,8 +174,10 @@ class LiveManager:
                 '-tune', 'zerolatency',  # Otimização para baixa latência
                 '-profile:v', 'high',  # Perfil High (recomendado para 1080p)
                 '-level', '4.0',  # Nível H.264 4.0 (compatível com YouTube)
-                '-maxrate', '4000k',  # Bitrate máximo: 4000k (dentro da faixa recomendada)
-                '-bufsize', '8000k',  # Buffer size: 2x o bitrate (recomendado)
+                '-b:v', '6000k',  # Bitrate de vídeo: 6000k (próximo do recomendado 6800k)
+                '-maxrate', '6000k',  # Bitrate máximo: 6000k
+                '-minrate', '3000k',  # Bitrate mínimo: 3000k (para evitar quedas)
+                '-bufsize', '12000k',  # Buffer size: 2x o bitrate máximo (recomendado)
                 '-g', '60',  # GOP size: 60 frames (2 segundos a 30fps - recomendado)
                 '-keyint_min', '60',  # Keyframe mínimo: igual ao GOP
                 '-sc_threshold', '0',  # Desabilita scene change detection (melhor para loop)
