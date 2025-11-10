@@ -137,6 +137,14 @@ class LiveManager:
             self.logger.error(f"❌ Arquivo de vídeo não encontrado: {video_path}")
             return False
         
+        # IMPORTANTE: Para qualquer stream anterior antes de iniciar um novo
+        # Isso evita o erro "More than one ingestion is using the primary URL"
+        if self.ffmpeg_process and self.ffmpeg_process.poll() is None:
+            self.logger.info("🛑 Parando stream anterior antes de iniciar novo...")
+            self.stop_streaming()
+            import time
+            time.sleep(2)  # Aguarda um pouco para garantir que o stream anterior foi encerrado
+        
         # Verifica conectividade de rede antes de tentar streaming
         try:
             import socket
@@ -160,7 +168,7 @@ class LiveManager:
             # - Codec: H.264 (libx264) para vídeo, AAC para áudio
             # - Resolução: 1920x1080 (1080p) - detectada automaticamente do vídeo
             # - Frame rate: 30fps - detectado automaticamente do vídeo
-            # - Bitrate vídeo: 6000k (recomendado: 3000-6000k para 1080p, YouTube recomenda 6800k)
+            # - Bitrate vídeo: 6800k (exatamente o recomendado pelo YouTube)
             # - Bitrate áudio: 128k (recomendado: 128k)
             # - Sample rate: 44100 Hz (recomendado: 44.1kHz ou 48kHz)
             # - Formato: FLV (RTMP requer FLV)
@@ -174,10 +182,10 @@ class LiveManager:
                 '-tune', 'zerolatency',  # Otimização para baixa latência
                 '-profile:v', 'high',  # Perfil High (recomendado para 1080p)
                 '-level', '4.0',  # Nível H.264 4.0 (compatível com YouTube)
-                '-b:v', '6000k',  # Bitrate de vídeo: 6000k (próximo do recomendado 6800k)
-                '-maxrate', '6000k',  # Bitrate máximo: 6000k
-                '-minrate', '3000k',  # Bitrate mínimo: 3000k (para evitar quedas)
-                '-bufsize', '12000k',  # Buffer size: 2x o bitrate máximo (recomendado)
+                '-b:v', '6800k',  # Bitrate de vídeo: 6800k (exatamente o recomendado pelo YouTube)
+                '-maxrate', '6800k',  # Bitrate máximo: 6800k
+                '-minrate', '3400k',  # Bitrate mínimo: 50% do máximo (para evitar quedas)
+                '-bufsize', '13600k',  # Buffer size: 2x o bitrate máximo (recomendado)
                 '-g', '60',  # GOP size: 60 frames (2 segundos a 30fps - recomendado)
                 '-keyint_min', '60',  # Keyframe mínimo: igual ao GOP
                 '-sc_threshold', '0',  # Desabilita scene change detection (melhor para loop)
