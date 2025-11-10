@@ -142,7 +142,6 @@ class LiveManager:
         if self.ffmpeg_process and self.ffmpeg_process.poll() is None:
             self.logger.info("🛑 Parando stream anterior antes de iniciar novo...")
             self.stop_streaming()
-            import time
             time.sleep(2)  # Aguarda um pouco para garantir que o stream anterior foi encerrado
         
         # Verifica conectividade de rede antes de tentar streaming
