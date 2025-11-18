@@ -95,3 +95,4 @@ docker compose ps
 
 **É 100% AUTOMÁTICO E ISOLADO NO DOCKER!** 🚀
 
+

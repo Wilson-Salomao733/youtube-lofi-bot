@@ -33,15 +33,18 @@ class LiveManager:
                 return True
             except Exception as e:
                 error_str = str(e).lower()
-                if 'name resolution' in error_str or 'failed to resolve' in error_str or 'no address associated' in error_str:
+                if 'name resolution' in error_str or 'failed to resolve' in error_str or 'no address associated' in error_str or 'temporary failure' in error_str:
                     if attempt < max_retries - 1:
                         self.logger.warning(f"⚠️  Erro de rede ao conectar ao YouTube (tentativa {attempt + 1}/{max_retries}): {e}")
                         self.logger.info(f"⏳ Aguardando {retry_delay} segundos antes de tentar novamente...")
+                        self.logger.info("💡 Verifique sua conexão com a internet e DNS")
                         time.sleep(retry_delay)
                         continue
                     else:
                         self.logger.error(f"❌ Erro de rede após {max_retries} tentativas: {e}")
                         self.logger.error("💡 Verifique sua conexão com a internet e DNS")
+                        self.logger.error("💡 O container pode estar sem acesso à internet")
+                        self.logger.error("💡 Verifique: docker network ls e docker network inspect")
                         return False
                 else:
                     raise
@@ -414,6 +417,45 @@ class LiveManager:
         
         if not broadcast_id or not self.uploader:
             return False
+        
+        # Primeiro, verifica se precisa aguardar o scheduledStartTime
+        try:
+            from datetime import datetime, timezone
+            broadcast_info = self.uploader.youtube.liveBroadcasts().list(
+                part='snippet',
+                id=broadcast_id
+            ).execute()
+            
+            if broadcast_info.get('items'):
+                snippet = broadcast_info['items'][0].get('snippet', {})
+                scheduled_start_time_str = snippet.get('scheduledStartTime', '')
+                
+                if scheduled_start_time_str:
+                    scheduled_start_time = datetime.fromisoformat(scheduled_start_time_str.replace('Z', '+00:00'))
+                    now_utc = datetime.now(timezone.utc)
+                    
+                    if scheduled_start_time > now_utc:
+                        wait_seconds = (scheduled_start_time - now_utc).total_seconds()
+                        if wait_seconds > 0:
+                            self.logger.info(f"⏰ Broadcast agendado para: {scheduled_start_time_str}")
+                            self.logger.info(f"⏰ Horário atual: {now_utc.isoformat()}")
+                            self.logger.info(f"⏳ Aguardando {wait_seconds:.0f} segundos ({wait_seconds/60:.1f} minutos) até o horário agendado...")
+                            
+                            # Aguarda em blocos de 30 segundos para mostrar progresso
+                            total_wait = int(wait_seconds)
+                            blocks = max(1, total_wait // 30)
+                            for i in range(blocks):
+                                sleep_time = min(30, total_wait - (i * 30))
+                                if sleep_time > 0:
+                                    time.sleep(sleep_time)
+                                    remaining = total_wait - ((i + 1) * 30)
+                                    if remaining > 0:
+                                        self.logger.info(f"⏳ Aguardando horário agendado... {remaining}s restantes")
+                            
+                            self.logger.info("✅ Horário agendado chegou!")
+        except Exception as e:
+            self.logger.warning(f"⚠️  Erro ao verificar scheduledStartTime: {e}")
+            # Continua mesmo se não conseguir verificar
         
         self.logger.info("⏳ Aguardando YouTube detectar stream e publicar automaticamente...")
         self.logger.info("💡 Isso pode levar 3-5 minutos. O YouTube precisa detectar o stream ativo.")
